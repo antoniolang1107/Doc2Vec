@@ -2,8 +2,13 @@ from gensim.models.doc2vec import Doc2Vec, TaggedDocument
 from nltk.tokenize import word_tokenize
 from sklearn.model_selection import train_test_split
 from sklearn import linear_model, tree, svm
+from sklearn.metrics import accuracy_score, balanced_accuracy_score, f1_score
 
-def load_data(fname):
+def load_data(fname) -> (list, list):
+	"""Reads in specified CSV file
+	:param fname: Name of CSV file to be read
+	:return document_data, label_data: lists of raw tweet and label data respectively
+	"""
 	document_data = []
 	label_data = []
 	with open(fname, 'r') as file:
@@ -33,29 +38,23 @@ def clean_data(documents, labels) -> (list, list):
 		documents[index] = ' '.join(cleaned_document)
 	return documents, cleaned_labels
 
-def train_doc2vec(cleaned_documents, labels):
+def train_doc2vec(cleaned_documents, labels) -> object:
 	"""Trains and saves a doc2vec model
 	
 	:param cleaned_documents: list of preprocessed documents
 	:return model: trained doc2vec model
-
-	tokenize cleaned dataset using nltk
-	train doc2vec from gensim
-	save model to disk
-	return model
 	"""
 
 	tokenized_documents = [word_tokenize(tweet) for tweet in cleaned_documents]
 	labled_docs = []
 	for index, doc in enumerate(tokenized_documents):
 		labled_docs.append(TaggedDocument(words=doc, tags=[labels[index]]))
-
 	fname = "doc2vec"
 	model = Doc2Vec(labled_docs)
 	model.save(fname)
 	return Doc2Vec.load(fname)
 
-def tokenize_data(cleaned_documents, d2v_model) -> list:
+def tokenize_dataset(cleaned_documents, d2v_model) -> list:
 	"""Tokenizes the sample data
 
 	:param cleaned_documents: list of preprocessed documents
@@ -78,23 +77,33 @@ def train(X_train, y_train) -> dict:
 			"decision_tree" : decision_tree,
 			"logistic_regression" : logistic_regression}
 
-def test(trained_models_dict, X_test, y_test):
-	pass
+def test(trained_models_dict, X_test, y_test) -> dict:
+	"""Tests and calculates performance of models
+
+	:param trained_models_dict: dictionary of trained models
+	:param X_test: test samples
+	:param y_test: test labels
+	:return performance_dict: dict containing dict of performance measurements by model
+	"""
+	performance_dict = {}
+	for model_name, model in trained_models_dict.items():
+		predictions = model.predict(X_test)
+		performance_dict[model_name] = {f"{model_name}_accuracy" : accuracy_score(y_test, predictions),
+										f"{model_name}_balanced_accuracy" : balanced_accuracy_score(y_test, predictions),
+										f"{model_name}_f1_score" : f1_score(y_test, predictions)}
+	return performance_dict
 
 
 if __name__ == "__main__":
 	documents, labels = load_data("twitter_sentiment_mini.csv")
-	# doc_copy = documents.copy()
 	cleaned_docs, cleaned_labels = clean_data(documents, labels)
-	# print("--DOCUMENTS--")
-	# for i in range(5):
-	# 	print(f"Original: {doc_copy[i]}")
-	# 	print(f"Cleaned: {cleaned_docs[i]}")
-	# print("--LABELS--")
-	# print(labels[:5])
-	# print(cleaned_labels[:5])
 	model = train_doc2vec(cleaned_docs, cleaned_labels)
-	vec_docs = tokenize_data(cleaned_docs, model)
+	vec_docs = tokenize_dataset(cleaned_docs, model)
 	X_train, X_test, y_train, y_test = train_test_split(vec_docs, cleaned_labels, test_size=0.33, random_state=1, stratify=cleaned_labels) 
 		# changed strafity to cleaned_labels
 	trained_models_dict = train(X_train, y_train)
+
+	model_performance_metric_dict = test(trained_models_dict, X_test, y_test)
+
+	for dict_key in model_performance_metric_dict.keys():
+	    print(f"{dict_key}: {model_performance_metric_dict[dict_key]}")
