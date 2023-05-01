@@ -6,12 +6,13 @@ from sklearn.metrics import accuracy_score, balanced_accuracy_score, f1_score
 
 def load_data(fname) -> (list, list):
 	"""Reads in specified CSV file
+
 	:param fname: Name of CSV file to be read
 	:return document_data, label_data: lists of raw tweet and label data respectively
 	"""
 	document_data = []
 	label_data = []
-	with open(fname, 'r') as file:
+	with open(fname, mode='r', encoding='latin-1') as file:
 		for record in file:
 			split_record = record.split(',', 5)
 			label_data.append(split_record[0])
@@ -26,11 +27,11 @@ def clean_data(documents, labels) -> (list, list):
 	:return documents, cleaned_labels
 	"""
 	punctuation = r"!\"#$%&'()*+,./:;<=>?@[\]^_`{|}~"
-	cleaned_labels = [1 if label == '4' else 0 for label in labels]
+	cleaned_labels = [1 if label == '"4"' else 0 for label in labels]
 	for index, document in enumerate(documents):
 		cleaned_document = []
 		for word in document.split(' '):
-			if '@' in word or 'http' in word:
+			if '@' in word or 'http' in word or '#' in word:
 				continue
 			parsed_word = word.replace('-', ' ')
 			parsed_word = ''.join([char.lower() for char in word if char not in punctuation])
@@ -61,7 +62,7 @@ def tokenize_dataset(cleaned_documents, d2v_model) -> list:
 	:param d2v_model: trained doc2vec model
 	:return vectorized_docs: vectorized list of documents
 	"""
-	return [d2v_model.infer_vector(doc.split(' '), epochs=100) for doc in cleaned_documents]
+	return [d2v_model.infer_vector(doc.split(' ')) for doc in cleaned_documents]
 
 def train(X_train, y_train) -> dict:
 	"""Trains multiple models from scikit-learn
@@ -70,9 +71,9 @@ def train(X_train, y_train) -> dict:
 	:param y_train: list of labels
 	:return models: {"model": model_object, etc}
 	"""
-	svm_model = svm.SVC().fit(X_train, y_train)
-	decision_tree = tree.DecisionTreeClassifier().fit(X_train, y_train)
-	logistic_regression = linear_model.LogisticRegression().fit(X_train, y_train)
+	svm_model = svm.SVC(max_iter=50).fit(X_train, y_train)
+	decision_tree = tree.DecisionTreeClassifier(max_depth=50).fit(X_train, y_train)
+	logistic_regression = linear_model.LogisticRegression(max_iter=50).fit(X_train, y_train)
 	return {"svm" : svm_model,
 			"decision_tree" : decision_tree,
 			"logistic_regression" : logistic_regression}
@@ -95,7 +96,7 @@ def test(trained_models_dict, X_test, y_test) -> dict:
 
 
 if __name__ == "__main__":
-	documents, labels = load_data("twitter_sentiment_mini.csv")
+	documents, labels = load_data("twitter_sentiment_data.csv")
 	cleaned_docs, cleaned_labels = clean_data(documents, labels)
 	model = train_doc2vec(cleaned_docs, cleaned_labels)
 	vec_docs = tokenize_dataset(cleaned_docs, model)
