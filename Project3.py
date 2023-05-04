@@ -71,10 +71,12 @@ def train(X_train, y_train) -> dict:
 	:param y_train: list of labels
 	:return models: {"model": model_object, etc}
 	"""
-	svm_model = svm.SVC(max_iter=50).fit(X_train, y_train)
-	decision_tree = tree.DecisionTreeClassifier(max_depth=50).fit(X_train, y_train)
-	logistic_regression = linear_model.LogisticRegression(max_iter=50).fit(X_train, y_train)
-	return {"svm" : svm_model,
+	svm_model = svm.LinearSVC(max_iter=100, tol=1e-3, verbose=1).fit(X_train, y_train)
+	decision_tree = tree.DecisionTreeClassifier(max_depth=50, min_samples_split=500, 
+		min_samples_leaf=250, max_features='sqrt').fit(X_train, y_train)
+	logistic_regression = linear_model.LogisticRegression(max_iter=100, n_jobs=8, 
+		verbose=1).fit(X_train, y_train)
+	return {"linear_svc" : svm_model,
 			"decision_tree" : decision_tree,
 			"logistic_regression" : logistic_regression}
 
@@ -107,4 +109,4 @@ if __name__ == "__main__":
 	model_performance_metric_dict = test(trained_models_dict, X_test, y_test)
 
 	for dict_key in model_performance_metric_dict.keys():
-	    print(f"{dict_key}: {model_performance_metric_dict[dict_key]}")
+	    print(f"{dict_key}: {model_performance_metric_dict[dict_key]}\n")
